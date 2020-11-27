@@ -1,0 +1,5 @@
+beautifulsoup4>=4.8
+boilerpy3
+feedparser>=5.2
+requests>=2.20
+tldextract>=2.2
