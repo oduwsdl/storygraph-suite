@@ -34,6 +34,7 @@ setup(
         'boilerpy3',
         'feedparser>=5.2',
         'requests>=2.20',
-        'tldextract>=2.2'
+        'tldextract>=2.2',
+        'networkx>=2.4'
     ]
 )
