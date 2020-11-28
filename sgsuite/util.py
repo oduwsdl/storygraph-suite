@@ -3,7 +3,6 @@ import json
 import logging
 import requests
 import sys
-import numpy as np
 
 from datetime import datetime
 from multiprocessing import Pool
@@ -648,20 +647,3 @@ def parallelTask(jobsLst, threadCount=5):
 
     return resLst
 #parallel proc - end
-
-#misc - start
-def cosineSim(X, Y):
-
-    try:
-        X2Norm = np.linalg.norm(X, 2)
-        Y2Norm = np.linalg.norm(Y, 2)
-        
-        if( X2Norm == 0 or Y2Norm == 0 ):
-            return 0
-
-        return np.dot(X, Y)/(X2Norm * Y2Norm)
-    except:
-        genericErrorInfo()
-
-        return 0
-#misc - end
