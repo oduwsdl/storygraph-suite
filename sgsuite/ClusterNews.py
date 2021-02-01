@@ -5,7 +5,9 @@ import networkx as nx
 from re import split
 
 from sgsuite.util import genericErrorInfo
+from sgsuite.util import getDomain
 from sgsuite.util import getISO8601Timestamp
+
 
 logger = logging.getLogger('sgsuite.sgsuite')
 class ClusterNews(object):
@@ -225,7 +227,7 @@ class ClusterNews(object):
 
         '''
             precondition for unique src count:
-            id key of nodes is of form "domain-count", e.g., "cnn.com-1"
+            "link" in story_graph['nodes']
         '''
 
         #reset state - start
@@ -239,6 +241,19 @@ class ClusterNews(object):
         if( len(story_graph['links']) == 0 ):
             return story_graph
 
+
+        #create id entry - start
+        domain_count = {}
+        for i in range( len(story_graph['nodes']) ):
+            node = story_graph['nodes'][i]
+            if( 'link' not in node or 'id' in node ):
+                continue
+
+            domain = getDomain( node['link'] )
+            domain_count.setdefault( domain, -1 )
+            domain_count[domain] += 1
+            node['id'] = domain + '-' + str(domain_count[domain])
+        #create id entry - end
 
 
         G = nx.Graph()
@@ -255,6 +270,8 @@ class ClusterNews(object):
             unique_src_count = {}
 
             for story_idx in nodes:
+                if( 'id' not in story_graph['nodes'][story_idx] ):
+                    continue
                 source = story_graph['nodes'][story_idx]['id'].split('-')[0]
                 unique_src_count[source] = True
 
