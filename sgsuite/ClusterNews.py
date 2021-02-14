@@ -298,7 +298,7 @@ class ClusterNews(object):
 
             story_graph['connected-comps'].append(conn_comp_dets)
 
-
+        story_graph['custom'] = {'description': 'no available description', 'name': 'no name'}
         story_graph['timestamp'] = getISO8601Timestamp()
         return story_graph
 
