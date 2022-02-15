@@ -32,9 +32,13 @@ setup(
     install_requires=[
         'beautifulsoup4>=4.8',
         'boilerpy3',
+        'en_core_web_sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.1.0/en_core_web_sm-3.1.0.tar.gz',
         'feedparser>=5.2',
+        'dateparser>=0.7',
         'requests>=2.20',
         'tldextract>=2.2',
-        'networkx>=2.4'
+        'networkx>=2.4',
+        'NwalaTextUtils @ git+https://git@github.com/oduwsdl/NwalaTextUtils.git',
+        'spacy==3.1.0'
     ]
 )

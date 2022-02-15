@@ -2,8 +2,12 @@ import os
 import json
 import logging
 import requests
+import re
+import spacy
+import string
 import sys
 
+from dateparser import parse as parseDateStr
 from datetime import datetime
 from multiprocessing import Pool
 from subprocess import check_output
@@ -11,8 +15,9 @@ from time import sleep
 from urllib.parse import urlparse
 
 from boilerpy3 import extractors
-
 from bs4 import BeautifulSoup
+from NwalaTextUtils.textutils import parallelTask
+from NwalaTextUtils.textutils import parallelGetTxtFrmURIs
 from tldextract import extract as extract_tld
 
 logger = logging.getLogger('sgsuite.sgsuite')
@@ -600,6 +605,486 @@ def extractFavIconFromHTML(html, sourceURL):
 #html/url - end
 
 #text - start
+def isExclusivePunct(text):
+
+    text = text.strip()
+    for char in text:
+        if char not in string.punctuation:
+            return False
+
+    return True
+
+def isStopword(term):
+
+    stopWordsDict = getStopwordsDict()
+    if( term.strip().lower() in stopWordsDict ):
+        return True
+    else:
+        return False
+
+def getStopwordsDict():
+
+    stopwordsDict = {
+        "a": True,
+        "about": True,
+        "above": True,
+        "across": True,
+        "after": True,
+        "afterwards": True,
+        "again": True,
+        "against": True,
+        "all": True,
+        "almost": True,
+        "alone": True,
+        "along": True,
+        "already": True,
+        "also": True,
+        "although": True,
+        "always": True,
+        "am": True,
+        "among": True,
+        "amongst": True,
+        "amoungst": True,
+        "amount": True,
+        "an": True,
+        "and": True,
+        "another": True,
+        "any": True,
+        "anyhow": True,
+        "anyone": True,
+        "anything": True,
+        "anyway": True,
+        "anywhere": True,
+        "are": True,
+        "around": True,
+        "as": True,
+        "at": True,
+        "back": True,
+        "be": True,
+        "became": True,
+        "because": True,
+        "become": True,
+        "becomes": True,
+        "becoming": True,
+        "been": True,
+        "before": True,
+        "beforehand": True,
+        "behind": True,
+        "being": True,
+        "below": True,
+        "beside": True,
+        "besides": True,
+        "between": True,
+        "beyond": True,
+        "both": True,
+        "but": True,
+        "by": True,
+        "can": True,
+        "can\'t": True,
+        "cannot": True,
+        "cant": True,
+        "co": True,
+        "could not": True,
+        "could": True,
+        "couldn\'t": True,
+        "couldnt": True,
+        "de": True,
+        "describe": True,
+        "detail": True,
+        "did": True,
+        "do": True,
+        "does": True,
+        "doing": True,
+        "done": True,
+        "due": True,
+        "during": True,
+        "e.g": True,
+        "e.g.": True,
+        "e.g.,": True,
+        "each": True,
+        "eg": True,
+        "either": True,
+        "else": True,
+        "elsewhere": True,
+        "enough": True,
+        "etc": True,
+        "etc.": True,
+        "even though": True,
+        "ever": True,
+        "every": True,
+        "everyone": True,
+        "everything": True,
+        "everywhere": True,
+        "except": True,
+        "for": True,
+        "former": True,
+        "formerly": True,
+        "from": True,
+        "further": True,
+        "get": True,
+        "go": True,
+        "had": True,
+        "has not": True,
+        "has": True,
+        "hasn\'t": True,
+        "hasnt": True,
+        "have": True,
+        "having": True,
+        "he": True,
+        "hence": True,
+        "her": True,
+        "here": True,
+        "hereafter": True,
+        "hereby": True,
+        "herein": True,
+        "hereupon": True,
+        "hers": True,
+        "herself": True,
+        "him": True,
+        "himself": True,
+        "his": True,
+        "how": True,
+        "however": True,
+        "i": True,
+        "ie": True,
+        "i.e": True,
+        "i.e.": True,
+        "if": True,
+        "in": True,
+        "inc": True,
+        "inc.": True,
+        "indeed": True,
+        "into": True,
+        "is": True,
+        "it": True,
+        "its": True,
+        "it's": True,
+        "itself": True,
+        "just": True,
+        "keep": True,
+        "latter": True,
+        "latterly": True,
+        "less": True,
+        "made": True,
+        "make": True,
+        "may": True,
+        "me": True,
+        "meanwhile": True,
+        "might": True,
+        "mine": True,
+        "more": True,
+        "moreover": True,
+        "most": True,
+        "mostly": True,
+        "move": True,
+        "must": True,
+        "my": True,
+        "myself": True,
+        "namely": True,
+        "neither": True,
+        "never": True,
+        "nevertheless": True,
+        "next": True,
+        "no": True,
+        "nobody": True,
+        "none": True,
+        "noone": True,
+        "nor": True,
+        "not": True,
+        "nothing": True,
+        "now": True,
+        "nowhere": True,
+        "of": True,
+        "off": True,
+        "often": True,
+        "on": True,
+        "once": True,
+        "one": True,
+        "only": True,
+        "onto": True,
+        "or": True,
+        "other": True,
+        "others": True,
+        "otherwise": True,
+        "our": True,
+        "ours": True,
+        "ourselves": True,
+        "out": True,
+        "over": True,
+        "own": True,
+        "part": True,
+        "per": True,
+        "perhaps": True,
+        "please": True,
+        "put": True,
+        "rather": True,
+        "re": True,
+        "same": True,
+        "see": True,
+        "seem": True,
+        "seemed": True,
+        "seeming": True,
+        "seems": True,
+        "several": True,
+        "she": True,
+        "should": True,
+        "show": True,
+        "side": True,
+        "since": True,
+        "sincere": True,
+        "so": True,
+        "some": True,
+        "somehow": True,
+        "someone": True,
+        "something": True,
+        "sometime": True,
+        "sometimes": True,
+        "somewhere": True,
+        "still": True,
+        "such": True,
+        "take": True,
+        "than": True,
+        "that": True,
+        "the": True,
+        "their": True,
+        "theirs": True,
+        "them": True,
+        "themselves": True,
+        "then": True,
+        "thence": True,
+        "there": True,
+        "thereafter": True,
+        "thereby": True,
+        "therefore": True,
+        "therein": True,
+        "thereupon": True,
+        "these": True,
+        "they": True,
+        "this": True,
+        "those": True,
+        "though": True,
+        "through": True,
+        "throughout": True,
+        "thru": True,
+        "thus": True,
+        "to": True,
+        "together": True,
+        "too": True,
+        "toward": True,
+        "towards": True,
+        "un": True,
+        "until": True,
+        "upon": True,
+        "us": True,
+        "very": True,
+        "via": True,
+        "was": True,
+        "we": True,
+        "well": True,
+        "were": True,
+        "what": True,
+        "whatever": True,
+        "when": True,
+        "whence": True,
+        "whenever": True,
+        "where": True,
+        "whereafter": True,
+        "whereas": True,
+        "whereby": True,
+        "wherein": True,
+        "whereupon": True,
+        "wherever": True,
+        "whether": True,
+        "which": True,
+        "while": True,
+        "whither": True,
+        "who": True,
+        "whoever": True,
+        "whole": True,
+        "whom": True,
+        "whose": True,
+        "why": True,
+        "will": True,
+        "with": True,
+        "within": True,
+        "without": True,
+        "would": True,
+        "yet": True,
+        "you": True,
+        "your": True,
+        "yours": True,
+        "yourself": True,
+        "yourselves": True
+    }
+    
+    return stopwordsDict
+
+def getTokenLabelsForText(text, label):
+
+    if( len(text) == 0 or len(label) == 0 ):
+        return []
+
+    labeledTokens = []
+    text = re.findall(r'(?u)\b[a-zA-Z\'\’-]+[a-zA-Z]+\b|\d+[.,]?\d*', text)
+
+    for tok in text:
+        tok = tok.strip()
+        
+        if( tok == '' or isExclusivePunct(tok) is True or isStopword(tok) is True ):
+            continue
+
+        labeledTokens.append({ 'entity': tok, 'class': label })
+
+    return labeledTokens
+
+def getTopKTermsListFromText(textOrTokens, k, minusStopwords=True):
+
+    if( len(textOrTokens) == 0 or k < 1 ):
+        return []
+
+    stopWordsDict = {}
+    if( minusStopwords ):
+        stopWordsDict = getStopwordsDict()
+
+    topKTermDict = {}
+    topKTermsList = []
+    textOrTokens = textOrTokens.split(' ') if isinstance(textOrTokens, str) else textOrTokens
+
+    for term in textOrTokens:
+        term = term.strip().lower()
+        
+        if( len(term) == 0 or term in stopWordsDict or isExclusivePunct(term) == True ):
+            continue
+
+        topKTermDict.setdefault(term, 0)
+        topKTermDict[term] += 1
+
+    sortedKeys = sorted( topKTermDict, key=lambda freq:topKTermDict[freq], reverse=True )
+
+    if( k > len(sortedKeys) ):
+        k = len(sortedKeys)
+
+    for i in range(k):
+        key = sortedKeys[i]
+        topKTermsList.append((key, topKTermDict[key]))
+
+    return topKTermsList
+
+def get_top_k_terms(text_or_tokens, k, class_name=''):    
+    top_k_terms = getTopKTermsListFromText( text_or_tokens, k )
+    if( class_name == '' ):
+        return [{'entity': e[0], 'class': f'TOP_{k}_TERM'} for e in top_k_terms]
+    else:
+        return [{'entity': e[0], 'class': class_name} for e in top_k_terms]
+
+def get_spacy_entities(spacy_ents, top_k_terms=[], base_ref_date=datetime.now(), labels_lst=[], **kwargs):
+    
+    kwargs.setdefault('output_2d_lst', False)
+    '''
+        #spacy entities: 
+            nlp = spacy.load('en_core_web_sm')
+            nlp.get_pipe("ner").labels
+            ('ORG', 'EVENT', 'NORP', 'ORDINAL', 'LOC', 'FAC', 'DATE', 'WORK_OF_ART', 'TIME', 'GPE', 'LANGUAGE', 'LAW', 'QUANTITY', 'PRODUCT', 'PERCENT', 'CARDINAL', 'PERSON', 'MONEY')
+    '''
+
+    ents_dedup = set()
+    final_ents = []
+    
+    for e in spacy_ents:
+
+        ent_str = e.text
+        if( labels_lst != [] and e.label_ not in labels_lst ):
+            continue
+
+        #normalize date - start
+        if( e.label_ == 'DATE' ):
+            
+            parsed_date = parseDateStr( ent_str, settings={'RELATIVE_BASE': base_ref_date} )
+            if( parsed_date is None ):
+                continue
+
+            ent_str = parsed_date.strftime('%Y-%m-%dT%H:%M:%S')
+        #normalize date - end
+
+        ent_key = ent_str.lower() + e.label_
+        if( ent_key in ents_dedup ):
+            continue
+
+        ents_dedup.add(ent_key)
+        if( kwargs['output_2d_lst'] is True ):
+            final_ents.append( [ent_str, e.label_] )
+        else:
+            final_ents.append({ 'entity': ent_str, 'class': e.label_ })
+
+
+    #add top k terms & avoid duplicates - start
+    for e in top_k_terms:
+
+        ent_key = e['entity'].lower() + e['class']
+        if( ent_key in ents_dedup ):
+            continue
+
+        ents_dedup.add(ent_key)
+        if( kwargs['output_2d_lst'] is True ):
+            final_ents.append([ e['entity'], e['class'] ])
+        else:
+            final_ents.append({ 'entity': e['entity'], 'class': e['class'] })
+    #add top k terms & avoid duplicates - end
+
+    return final_ents
+
+def parallel_ner(link, add_top_k_terms=10, min_doc_word_count=100):
+
+    nlp = spacy.load('en_core_web_sm')
+    spacy_doc = nlp( link['text'] )
+    doc_len = len(spacy_doc)
+
+    if( min_doc_word_count < 100 ):
+        return {'entities': []}
+
+    top_k_terms = get_top_k_terms( [t.text for t in spacy_doc], add_top_k_terms )
+    if( 'title' in link ):
+        top_k_terms += getTokenLabelsForText( link['title'], 'TITLE' )
+
+    return { 
+        'entities': get_spacy_entities(spacy_doc.ents, top_k_terms=top_k_terms, base_ref_date=datetime.now(), labels_lst=list(nlp.get_pipe('ner').labels), output_2d_lst=False)
+    }
+
+def get_entities_frm_links(links, update_rate=10, **kwargs):
+    
+    add_top_k_terms = kwargs.get('add_top_k_terms', 10)
+    min_doc_word_count = kwargs.get('min_doc_word_count', 100)
+    #rename for parallelGetTxtFrmURIs
+    kwargs.setdefault('threadCount', kwargs.get('thread_count', 5))
+
+    jobs_lst = []
+    links = parallelGetTxtFrmURIs(links, updateRate=update_rate, **kwargs)
+
+    for i in range(len(links)):
+        
+        keywords = {
+            'link': links[i],
+            'add_top_k_terms': add_top_k_terms,
+            'min_doc_word_count': min_doc_word_count
+        }
+
+        jobs_lst.append({
+            'func': parallel_ner,
+            'args': keywords,
+            'misc': None,
+            'print': ''
+        })
+    
+    res_lst = parallelTask(jobs_lst, threadCount=kwargs['threadCount'])
+    if( len(res_lst) == len(links) ):
+        for i in range(len(links)):
+            
+            links[i]['id'] = f'{i}'
+            links[i]['link'] = links[i].pop('uri')
+            links[i]['entities'] = res_lst[i]['output']['entities']
+
+    return links
+
 def sanitizeText(text):
 
     #UnicodeEncodeError: 'utf-8' codec can't encode character '\ud83d' in position 3507: surrogates not allowed
@@ -614,36 +1099,3 @@ def sanitizeText(text):
     return text
 
 #text - end
-
-#parallel proc - start
-def parallelProxy(job):
-    
-    output = job['func'](**job['args'])
-
-    if( 'print' in job ):
-        if( len(job['print']) != 0 ):
-            
-            logger.info( job['print'] )
-
-    return {'input': job, 'output': output, 'misc': job['misc']}
-
-def parallelTask(jobsLst, threadCount=5):
-
-    if( len(jobsLst) == 0 ):
-        return []
-
-    if( threadCount < 2 ):
-        threadCount = 2
-
-    try:
-        workers = Pool(threadCount)
-        resLst = workers.map(parallelProxy, jobsLst)
-
-        workers.close()
-        workers.join()
-    except:
-        logger.error( genericErrorInfo() )
-        return []
-
-    return resLst
-#parallel proc - end

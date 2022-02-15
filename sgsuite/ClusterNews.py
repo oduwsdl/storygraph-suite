@@ -2,17 +2,19 @@ import itertools
 import logging
 import networkx as nx
 
+from datetime import datetime
 from re import split
 
 from sgsuite.util import genericErrorInfo
 from sgsuite.util import getDomain
 from sgsuite.util import getISO8601Timestamp
+from sgsuite.util import get_entities_frm_links
 
 
 logger = logging.getLogger('sgsuite.sgsuite')
 class ClusterNews(object):
 
-    def __init__(self, nodes_lst, sim_metric='weighted-jaccard-overlap', min_sim=0.3, jaccard_weight=0.3, overlap_weight=0.7, **kwargs):
+    def __init__(self, min_sim=0.3, jaccard_weight=0.3, sim_metric='weighted-jaccard-overlap', graph_name='graph_name', graph_description='graph_description', **kwargs):
         
         '''
             entity_dict format:
@@ -35,20 +37,34 @@ class ClusterNews(object):
                 ]
             }
         '''
-
-        self.nodes_lst = nodes_lst
-        self.sim_metric = sim_metric
+        kwargs.setdefault('annotate_min_avg_deg', 3)
+        kwargs.setdefault('annotate_min_uniq_src_count', 3)
+        
         self.min_sim = min_sim
         self.jaccard_weight = jaccard_weight
-        self.overlap_weight = overlap_weight
+        self.sim_metric = sim_metric
+        self.graph_name = graph_name
+        self.graph_description = graph_description
         self.kwargs = kwargs
 
         self.entity_extraction_key = 'entity'
         self.entity_container_key = 'entities'
-        self.tokenize_classes = kwargs.get('tokenize_classes', ['PERSON', 'LOCATION', 'ORGANIZATION'])
-        self.split_pattern = kwargs.get('word_regex_split_pattern', "[^a-zA-Z0-9.'’]")
-        
-    def cluster_news(self):
+    
+    def gen_storygraph(self, links):
+
+        sg = get_entities_frm_links(links)
+
+        #run news clustering algorithm
+        #min_sim, similarity threshold: 1 means 100% match
+        #sim_metric, #"weighted-jaccard-overlap", "jaccard", and "overlap"
+        sg = self.cluster_news(sg)
+
+        #annotate sg_nodes so it can be visualized at: http://storygraph.cs.odu.edu/graphs/polar-media-consensus-graph/
+        sg = ClusterNews.annotate(sg, min_avg_deg=self.kwargs['annotate_min_avg_deg'], min_uniq_src_count=self.kwargs['annotate_min_uniq_src_count'], graph_name=self.graph_name, graph_description=self.graph_description)
+
+        return sg
+
+    def cluster_news(self, nodes_lst):
         
         logger.info('\ncluster_news():')
         '''
@@ -59,7 +75,7 @@ class ClusterNews(object):
         logger.info('\tsimilarity-metric: ' + self.sim_metric)
         logger.info('\tmin_sim: ' + str(self.min_sim))
 
-        indices = list( range( len(self.nodes_lst) ) )      
+        indices = list( range( len(nodes_lst) ) )      
         pairs = list( itertools.combinations(indices, 2) )
 
         links = []
@@ -69,7 +85,7 @@ class ClusterNews(object):
             first_story = pair[0]
             second_story = pair[1]
             
-            sim = self.calc_ent_sim(first_story, second_story)
+            sim = self.calc_ent_sim(nodes_lst, first_story, second_story)
             
             if( sim >= self.min_sim ):
                 
@@ -83,9 +99,9 @@ class ClusterNews(object):
                 logger.info('\tpairs: ' + str(first_story) + ' vs ' + str(second_story))
                 logger.info('\t\tsim: ' + str(sim))
 
-                if( 'title' in self.nodes_lst[first_story] and 'title' in self.nodes_lst[second_story] ):
-                    logger.info('\t\t' + self.nodes_lst[first_story]['title'][:50] )
-                    logger.info('\t\t' + self.nodes_lst[second_story]['title'][:50] )
+                if( 'title' in nodes_lst[first_story] and 'title' in nodes_lst[second_story] ):
+                    logger.info('\t\t' + nodes_lst[first_story]['title'][:50] )
+                    logger.info('\t\t' + nodes_lst[second_story]['title'][:50] )
                 
                 logger.info('')
 
@@ -97,19 +113,25 @@ class ClusterNews(object):
 
         logger.info( 'pairs count: ' + str(len(pairs)) )
 
-        return {'nodes': self.nodes_lst, 'links': links}
+        return {
+            'links': links, 
+            'nodes': nodes_lst,
+            'connected-comps': [],
+            'timestamp': datetime.utcnow().isoformat() + 'Z',
+            'custom': {'description': self.graph_description, 'name': self.graph_name}
+        }
 
-    def calc_ent_sim(self, first_story, second_story):
+    def calc_ent_sim(self, nodes_lst, first_story, second_story):
 
-        if( self.entity_container_key not in self.nodes_lst[first_story] or self.entity_container_key not in self.nodes_lst[second_story] ):
+        if( self.entity_container_key not in nodes_lst[first_story] or self.entity_container_key not in nodes_lst[second_story] ):
             return 0
         
         sim = 0    
-        first_clust = self.nodes_lst[first_story][self.entity_container_key]
-        second_cluster = self.nodes_lst[second_story][self.entity_container_key]
+        first_clust = nodes_lst[first_story][self.entity_container_key]
+        second_cluster = nodes_lst[second_story][self.entity_container_key]
         
-        firstSet = ClusterNews.get_set_frm_cluster(first_clust, self.entity_extraction_key, split_pattern=self.split_pattern, tokenize_classes=self.tokenize_classes)
-        secondSet = ClusterNews.get_set_frm_cluster(second_cluster, self.entity_extraction_key, split_pattern=self.split_pattern, tokenize_classes=self.tokenize_classes)
+        firstSet = ClusterNews.get_set_frm_cluster(first_clust, self.entity_extraction_key)
+        secondSet = ClusterNews.get_set_frm_cluster(second_cluster, self.entity_extraction_key)
 
         if( self.sim_metric == 'overlap' ):
             sim = ClusterNews.overlap_set_pair(firstSet, secondSet)
@@ -163,12 +185,12 @@ class ClusterNews(object):
         return jaccard_weight + overlap_weight
 
     @staticmethod
-    def word_tokenizer(txt, split_pattern="[^a-zA-Z0-9.'’]"):
+    def unused_word_tokenizer(txt, split_pattern="[^a-zA-Z0-9.'’]"):
         txt = txt.replace('\n', ' ')
         return split(split_pattern, txt)
 
     @staticmethod
-    def get_set_frm_cluster(cluster, extraction_key, split_pattern="[^a-zA-Z0-9.'’]", tokenize_classes=['PERSON', 'LOCATION', 'ORGANIZATION']):
+    def get_set_frm_cluster(cluster, extraction_key):
 
         ent_set = set()
 
@@ -177,18 +199,11 @@ class ClusterNews(object):
             if( 'class' not in set_member or extraction_key not in set_member ):
                 continue
 
-            ent_class = set_member['class'].upper()
-
-            if( ent_class not in tokenize_classes ):
+            if( set_member['class'].upper() in ['DATE', 'PERCENT', 'MONEY'] ):
                 #don't tokenize datetimes and percent and money
                 ent_set.add( set_member[extraction_key].lower() )
             else:
-                #old:
-                #ent_toks = set_member[extraction_key].lower().split(' ')
-                
-                #new/untested:
-                ent_toks = ClusterNews.word_tokenizer( set_member[extraction_key].lower().strip(), split_pattern=split_pattern )
-
+                ent_toks = set_member[extraction_key].lower().split(' ')
                 for sing_tok in ent_toks:
                     
                     sing_tok = sing_tok.strip()
@@ -220,7 +235,7 @@ class ClusterNews(object):
         return s/float(nnodes)
 
     @staticmethod
-    def news_event_annotate(annotation_name, story_graph, min_avg_deg, min_uniq_src_count):
+    def news_event_annotate(annotation_name, story_graph, min_avg_deg, min_uniq_src_count, **kwargs):
 
         if( 'links' not in story_graph or 'nodes' not in story_graph ):
             return story_graph
@@ -229,7 +244,6 @@ class ClusterNews(object):
             precondition for unique src count:
             "link" in story_graph['nodes']
         '''
-
         #reset state - start
         for i in range(0, len(story_graph['nodes'])):
 
@@ -298,15 +312,13 @@ class ClusterNews(object):
 
             story_graph['connected-comps'].append(conn_comp_dets)
 
-        story_graph['custom'] = {'description': 'no available description', 'name': 'no name'}
-        story_graph['timestamp'] = getISO8601Timestamp()
         return story_graph
 
     @staticmethod
-    def annotate(story_graph, min_avg_deg, min_uniq_src_count, annotation_name='event-cluster'):
+    def annotate(story_graph, min_avg_deg, min_uniq_src_count, annotation_name='event-cluster', **kwargs):
         
         if( annotation_name == 'event-cluster' ):
-            story_graph = ClusterNews.news_event_annotate(annotation_name, story_graph, min_avg_deg, min_uniq_src_count)
+            story_graph = ClusterNews.news_event_annotate(annotation_name, story_graph, min_avg_deg, min_uniq_src_count, **kwargs)
 
         return story_graph
         
