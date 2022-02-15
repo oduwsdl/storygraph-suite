@@ -7,7 +7,6 @@ from re import split
 
 from sgsuite.util import genericErrorInfo
 from sgsuite.util import getDomain
-from sgsuite.util import getISO8601Timestamp
 from sgsuite.util import get_entities_frm_links
 
 
@@ -244,31 +243,27 @@ class ClusterNews(object):
             precondition for unique src count:
             "link" in story_graph['nodes']
         '''
+        
         #reset state - start
+        domain_count = {}
         for i in range(0, len(story_graph['nodes'])):
 
-            story_graph['nodes'][i].setdefault('node-details', {})
-            story_graph['nodes'][i]['node-details'].setdefault('annotation', annotation_name)
-            story_graph['nodes'][i]['node-details']['connected-comp-type'] = ''
-        #reset state - end  
-
-        if( len(story_graph['links']) == 0 ):
-            return story_graph
-
-
-        #create id entry - start
-        domain_count = {}
-        for i in range( len(story_graph['nodes']) ):
             node = story_graph['nodes'][i]
             if( 'link' not in node or 'id' in node ):
                 continue
+            
+            node.setdefault('node-details', {})
+            node['node-details'].setdefault('annotation', annotation_name)
+            node['node-details']['connected-comp-type'] = ''
 
             domain = getDomain( node['link'] )
             domain_count.setdefault( domain, -1 )
             domain_count[domain] += 1
             node['id'] = domain + '-' + str(domain_count[domain])
-        #create id entry - end
+        #reset state - end  
 
+        if( len(story_graph['links']) == 0 ):
+            return story_graph
 
         G = nx.Graph()
         for edge in story_graph['links']:

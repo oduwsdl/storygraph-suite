@@ -7,7 +7,7 @@ desc = """A collection of software used by StoryGraphs (http://storygraph.cs.odu
 __appversion__ = None
 
 #__appversion__, defined here
-exec(open('sgsuite/config.py').read())
+exec(open('sgsuite/version.py').read())
 
 setup(
     name='sgsuite',
@@ -24,11 +24,6 @@ setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent"
     ],
-    package_data={
-        'sgsuite': [
-            './sample_txt/*'
-        ]
-    },
     install_requires=[
         'beautifulsoup4>=4.8',
         'boilerpy3',
@@ -40,5 +35,8 @@ setup(
         'networkx>=2.4',
         'NwalaTextUtils @ git+https://git@github.com/oduwsdl/NwalaTextUtils.git',
         'spacy==3.1.0'
+    ],
+    scripts=[
+        'bin/sgs'
     ]
 )

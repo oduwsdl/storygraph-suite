@@ -1079,7 +1079,7 @@ def get_entities_frm_links(links, update_rate=10, **kwargs):
     if( len(res_lst) == len(links) ):
         for i in range(len(links)):
             
-            links[i]['id'] = f'{i}'
+            #links[i]['id'] = f'{i}'
             links[i]['link'] = links[i].pop('uri')
             links[i]['entities'] = res_lst[i]['output']['entities']
 

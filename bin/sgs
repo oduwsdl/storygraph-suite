@@ -1,0 +1,96 @@
+#!python
+
+import argparse
+import json
+import logging
+import sys
+
+from sgsuite.ClusterNews import ClusterNews
+from sgsuite.util import dumpJsonToFile
+from sgsuite.util import genericErrorInfo
+
+logging.basicConfig(format='', level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+def get_generic_args():
+    parser = argparse.ArgumentParser(formatter_class=lambda prog: argparse.HelpFormatter(prog, max_help_position=30), description='Run StoryGraph\'s (https://storygraph.cs.odu.edu/) news similarity graph generator algorithm on input news articles.')
+    parser.add_argument('input', nargs='+', help='Multiple news links and/or JSON or text files containing links')
+    
+    #group from here
+    parser.add_argument('--log-file', default='', help='Log output filename')
+    parser.add_argument('--log-format', default='', help='Log print format, see: https://docs.python.org/3/howto/logging-cookbook.html')
+    parser.add_argument('--log-level', default='info', choices=['critical', 'error', 'warning', 'info', 'debug', 'notset'], help='Log level')
+
+    parser.add_argument('-m', '--min-sim', default=0.3, type=float, help='The minimum similarity threshold for linking a pair of nodes.')
+    parser.add_argument('-j', '--jaccard-weight', default=0.3, type=float, help='Jaccard weight [0, 1] in weighted-jaccard-overlap similarity equation.')
+
+    #alphabetical from here
+    parser.add_argument('-d', '--graph-description', default='', help='Graph description.')
+    parser.add_argument('-g', '--graph-name', default='', help='Graph name.')
+    parser.add_argument('-o', '--output', help='Output file')
+    parser.add_argument('--pretty-print', help='Pretty print JSON output', action='store_true')
+    return parser
+
+def get_link(link_or_file):
+
+    link_or_file = link_or_file.strip()
+    if( link_or_file.startswith('http') ):
+        return [{'link': link_or_file}]
+
+    links = []
+    with open(link_or_file, 'r') as infile:
+        for l in infile:
+    
+            l = l.strip()
+            if( l.startswith('http') ):
+                links.append({'link': l})
+            elif( l.startswith('{') ):
+                
+                try:
+                    l = json.loads(l)
+                except:
+                    genericErrorInfo()
+                    continue
+                
+                if( 'link' in l ):
+                    links.append(l)
+    
+    return links
+
+def proc_req(args):
+    
+    params = vars(args)
+
+    all_link_details = []
+    for link_or_file in args.input:
+        all_link_details += get_link(link_or_file)
+    
+    only_links = [l['link'] for l in all_link_details]
+    sgc = ClusterNews(min_sim=params.pop('min_sim'), jaccard_weight=params.pop('jaccard_weight'), sim_metric='weighted-jaccard-overlap', graph_name=params.pop('graph_name'), graph_description=params.pop('graph_description'), **params)
+    sg_nodes = sgc.gen_storygraph(only_links)
+
+    if( len(all_link_details) == len(sg_nodes) ):
+        for i in range( len(all_link_details[i]) ):
+            if( len(all_link_details[i].keys()) > 1 ):
+                
+                for k,v in all_link_details[i].items():
+                    sg_nodes['nodes'][i][k] = v
+    
+    if( args.output is not None ):
+        dumpJsonToFile(args.output, sg_nodes, indentFlag=args.pretty_print)
+
+def main():
+    
+    if( len(sys.argv) > 1 ):
+        if( sys.argv[1] == '-v' or sys.argv[1] == '--version' ):
+            
+            from sgsuite.version import __appversion__
+            print(__appversion__)
+            return
+
+    parser = get_generic_args()
+    args = parser.parse_args()
+    proc_req(args)
+
+if __name__ == '__main__':
+    main()
