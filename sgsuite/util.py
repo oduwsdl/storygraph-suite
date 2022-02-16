@@ -6,6 +6,7 @@ import re
 import spacy
 import string
 import sys
+import warnings
 
 from dateparser import parse as parseDateStr
 from datetime import datetime
@@ -1050,8 +1051,43 @@ def parallel_ner(link, add_top_k_terms=10, min_doc_word_count=100):
         'entities': get_spacy_entities(spacy_doc.ents, top_k_terms=top_k_terms, base_ref_date=datetime.now(), labels_lst=list(nlp.get_pipe('ner').labels), output_2d_lst=False)
     }
 
+def parse_inpt_for_links(usr_input):
+
+    def get_link(link_or_file):
+
+        link_or_file = link_or_file.strip()
+        if( link_or_file.startswith('http') ):
+            return [{'link': link_or_file}]
+
+        links = []
+        with open(link_or_file, 'r') as infile:
+            for l in infile:
+        
+                l = l.strip()
+                if( l.startswith('http') ):
+                    links.append({'link': l})
+                elif( l.startswith('{') ):
+                    
+                    try:
+                        l = json.loads(l)
+                    except:
+                        genericErrorInfo()
+                        continue
+                    
+                    if( 'link' in l ):
+                        links.append(l)
+        
+        return links
+
+    all_link_details = []
+    for link_or_file in usr_input:
+        all_link_details += get_link(link_or_file)
+
+    return all_link_details
+
 def get_entities_frm_links(links, update_rate=10, **kwargs):
     
+    warnings.filterwarnings("ignore",message="The localize method is no longer necessary, as this time zone supports the fold attribute")
     add_top_k_terms = kwargs.get('add_top_k_terms', 10)
     min_doc_word_count = kwargs.get('min_doc_word_count', 100)
     #rename for parallelGetTxtFrmURIs
@@ -1079,7 +1115,6 @@ def get_entities_frm_links(links, update_rate=10, **kwargs):
     if( len(res_lst) == len(links) ):
         for i in range(len(links)):
             
-            #links[i]['id'] = f'{i}'
             links[i]['link'] = links[i].pop('uri')
             links[i]['entities'] = res_lst[i]['output']['entities']
 
