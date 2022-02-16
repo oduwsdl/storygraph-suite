@@ -7,6 +7,8 @@ StoryGraph suite provides a collection of software tools currently used by [Stor
 
 ### Installation
 Use the following command to install this Python-based suite,
+`$ pip install sgsuite`
+OR
 ```sh
 $ git clone https://github.com/oduwsdl/storygraph-suite.git
 $ pip install storygraph-suite/

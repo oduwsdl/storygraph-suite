@@ -23,6 +23,18 @@ from tldextract import extract as extract_tld
 
 logger = logging.getLogger('sgsuite.sgsuite')
 
+try:
+    spacy.load('en_core_web_sm')
+    '''
+    This hack was used since adding 
+        'en_core_web_sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.1.0/en_core_web_sm-3.1.0.tar.gz#egg=en_core_web_sm' 
+    to setup.py's install_requires made the package not uploadable to pypi: "HTTPError: 400 Client Error: Invalid value for requires_dist. Error: Can't have direct dependency: 'en-core-web-sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.1.0/en_core_web_sm-3.1.0.tar.gz#egg=en_core_web_sm' for url: https://upload.pypi.org/legacy/"
+    '''
+except OSError:
+    print('Downloading en_core_web_sm language model for the spaCy NER tagger (This would be done just once)\n')
+    from spacy.cli import download
+    download('en_core_web_sm')
+
 def getISO8601Timestamp():
     return datetime.utcnow().isoformat() + 'Z'
 

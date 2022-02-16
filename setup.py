@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-
+#import os
 from setuptools import setup, find_packages
 
 desc = """A collection of software used by StoryGraphs (http://storygraph.cs.odu.edu/)"""
@@ -13,7 +13,7 @@ setup(
     name='sgsuite',
     version=__appversion__,
     description=desc,
-    long_description='A collection of software used by StoryGraphs (http://storygraph.cs.odu.edu/)',
+    long_description='A collection of software used by StoryGraphs (http://storygraph.cs.odu.edu/) See documentation: https://github.com/oduwsdl/storygraph-suite',
     author='Alexander C. Nwala',
     author_email='alexandernwala@gmail.com',
     url='https://github.com/oduwsdl/storygraph-suite',
@@ -27,14 +27,13 @@ setup(
     install_requires=[
         'beautifulsoup4>=4.8',
         'boilerpy3',
-        'en_core_web_sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.1.0/en_core_web_sm-3.1.0.tar.gz',
-        'feedparser>=5.2',
         'dateparser>=0.7',
+        'feedparser>=5.2',
         'requests>=2.20',
         'tldextract>=2.2',
         'networkx>=2.4',
-        'NwalaTextUtils @ git+https://git@github.com/oduwsdl/NwalaTextUtils.git',
-        'spacy==3.1.0'
+        'NwalaTextUtils==0.0.4',
+        'spacy>=3.1.0'
     ],
     scripts=[
         'bin/sgs'

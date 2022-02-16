@@ -2,3 +2,7 @@
 *.pyc
 
 private
+/build/
+/dist/
+/*.egg-info
+/*.egg
