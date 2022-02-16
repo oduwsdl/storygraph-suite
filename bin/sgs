@@ -23,9 +23,11 @@ def get_generic_args():
     parser.add_argument('--log-format', default='', help='Log print format, see: https://docs.python.org/3/howto/logging-cookbook.html')
     parser.add_argument('--log-level', default='info', choices=['critical', 'error', 'warning', 'info', 'debug', 'notset'], help='Log level')
 
-    parser.add_argument('-m', '--min-sim', default=0.3, type=float, help='The minimum similarity threshold for linking a pair of nodes.')
-    parser.add_argument('--no-storygraph', action='store_true', help='Do not run graph generation algorithm, stop at boilerplate removal.')
     parser.add_argument('-j', '--jaccard-weight', default=0.3, type=float, help='Jaccard weight [0, 1] in weighted-jaccard-overlap similarity equation.')
+    parser.add_argument('-m', '--min-sim', default=0.3, type=float, help='The minimum similarity threshold for linking a pair of nodes.')
+    parser.add_argument('--thread-count', default=5, type=int, help='Count of threads to use for parallel tasks (Deref. URIs & NER).')
+    parser.add_argument('--no-storygraph', action='store_true', help='Do not run graph generation algorithm, stop at boilerplate removal.')
+    
 
     #alphabetical from here
     parser.add_argument('-d', '--graph-description', default='Graph description', help='Graph description.')
@@ -34,14 +36,14 @@ def get_generic_args():
     parser.add_argument('--pretty-print', help='Pretty print JSON output', action='store_true')
     return parser
 
-def run_get_entities_frm_links(only_links, output):
+def run_get_entities_frm_links(only_links, args):
 
-    links = get_entities_frm_links(only_links)
-    if( output is None ):
+    links = get_entities_frm_links(only_links, thread_count=args.thread_count)
+    if( args.output is None ):
         print('Use -o output/file/path.jsonl.txt to write output')
         return
 
-    with open(output, 'w') as outfile:
+    with open(args.output, 'w') as outfile:
         for line in links:
             try:
                 line = json.dumps(line, ensure_ascii=False) + '\n'
@@ -49,7 +51,7 @@ def run_get_entities_frm_links(only_links, output):
             except:
                 genericErrorInfo()
 
-    print(f'wrote: {output}')
+    print(f'wrote: {args.output}')
 
 def run_cluster_news(all_link_details, only_links, output, params, args):
 
@@ -77,7 +79,7 @@ def proc_req(args):
     only_links = [l['link'] for l in all_link_details]
 
     if( args.no_storygraph ):
-        run_get_entities_frm_links(only_links, args.output)
+        run_get_entities_frm_links(only_links, args)
     else:
         run_cluster_news(all_link_details, only_links, args.output, params, args)
 

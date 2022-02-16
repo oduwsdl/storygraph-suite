@@ -51,7 +51,7 @@ class ClusterNews(object):
     
     def gen_storygraph(self, links):
 
-        sg = get_entities_frm_links(links)
+        sg = get_entities_frm_links(links, thread_count=self.kwargs.get('thread_count', 5))
 
         #run news clustering algorithm
         #min_sim, similarity threshold: 1 means 100% match

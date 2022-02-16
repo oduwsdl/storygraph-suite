@@ -1091,8 +1091,8 @@ def get_entities_frm_links(links, update_rate=10, **kwargs):
     add_top_k_terms = kwargs.get('add_top_k_terms', 10)
     min_doc_word_count = kwargs.get('min_doc_word_count', 100)
     #rename for parallelGetTxtFrmURIs
-    kwargs.setdefault('threadCount', kwargs.get('thread_count', 5))
-
+    kwargs.setdefault('threadCount', kwargs.pop('thread_count', 5))
+    
     jobs_lst = []
     links = parallelGetTxtFrmURIs(links, updateRate=update_rate, **kwargs)
 
