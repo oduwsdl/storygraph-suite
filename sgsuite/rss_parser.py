@@ -1,5 +1,6 @@
-import os
 import logging
+import os
+import ssl
 
 from copy import deepcopy
 from datetime import datetime
@@ -13,6 +14,7 @@ from sgsuite.util import getDedupKeyForURI
 from sgsuite.util import getDomain
 
 logger = logging.getLogger('sgsuite.sgsuite')
+if hasattr(ssl, '_create_unverified_context'): ssl._create_default_https_context = ssl._create_unverified_context
 
 def get_memento_rss_feed(uri):
 
@@ -36,7 +38,7 @@ def get_memento_rss_feed(uri):
 
     return id_rss_memento, rss_feed
 
-def get_lnks_frm_feeds(uri, link_count=1, archive_rss_flag=True, rss_fields=['title', 'published', 'published_parsed']):
+def get_lnks_frm_feeds(uri, link_count=1, archive_rss_flag=True, rss_fields=['title', 'published', 'published_parsed'], expand_url=False):
 
     '''
         For news sources with rss links, get link_count links from uri
@@ -54,10 +56,11 @@ def get_lnks_frm_feeds(uri, link_count=1, archive_rss_flag=True, rss_fields=['ti
         ]
     '''
 
-    uri = expandUrl(uri)
-    uri = uri.strip()
+    if( expand_url is True ):
+        uri = expandUrl(uri)
+        uri = uri.strip()
 
-    if( len(uri) == 0 ):
+    if( uri == '' ):
         return [], {}
 
     links = []
@@ -120,7 +123,7 @@ def get_lnks_frm_feeds(uri, link_count=1, archive_rss_flag=True, rss_fields=['ti
         'custom': {}
     }
 '''
-def get_news_articles_frm_rss(rss_links, max_lnks_per_src=1, archive_rss_flag=False, rss_fields=['title', 'published']):
+def get_news_articles_frm_rss(rss_links, max_lnks_per_src=1, archive_rss_flag=False, rss_fields=['title', 'published'], expand_url=False, **kwargs):
 
     if( len(rss_links) == 0 or max_lnks_per_src < 1 ):
         return {}, {}
@@ -148,7 +151,7 @@ def get_news_articles_frm_rss(rss_links, max_lnks_per_src=1, archive_rss_flag=Fa
             sleep(throttle)
 
         prev_now = datetime.now()        
-        links, rss_feed = get_lnks_frm_feeds( rss_dets['rss'].strip(), max_lnks_per_src, archive_rss_flag=archive_rss_flag, rss_fields=rss_fields )
+        links, rss_feed = get_lnks_frm_feeds( rss_dets['rss'].strip(), max_lnks_per_src, archive_rss_flag=archive_rss_flag, rss_fields=rss_fields, expand_url=expand_url )
         
         for uri_dets in links:
             
