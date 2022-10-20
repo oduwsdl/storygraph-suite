@@ -1046,10 +1046,10 @@ def get_spacy_entities(spacy_ents, top_k_terms=[], base_ref_date=datetime.now(),
 
     return final_ents
 
-def parallel_ner(link, add_top_k_terms=10, min_doc_word_count=100):
+def parallel_ner(link, add_top_k_terms=10, min_doc_word_count=100, include_title_for_ner=True):
 
     nlp = spacy.load('en_core_web_sm')
-    spacy_doc = nlp( link['text'] )
+    spacy_doc = nlp( link.get('title', '').strip() + '.\n' + link['text'] ) if include_title_for_ner is True else nlp( link['text'] )
     doc_len = len(spacy_doc)
 
     if( min_doc_word_count < 100 ):
@@ -1113,7 +1113,8 @@ def get_entities_frm_links(links, update_rate=10, **kwargs):
         keywords = {
             'link': links[i],
             'add_top_k_terms': add_top_k_terms,
-            'min_doc_word_count': min_doc_word_count
+            'min_doc_word_count': min_doc_word_count,
+            'include_title_for_ner': kwargs.get('include_title_for_ner', True)
         }
 
         jobs_lst.append({
