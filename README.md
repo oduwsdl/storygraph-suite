@@ -2,8 +2,8 @@
 
 StoryGraph suite provides a collection of software tools currently used by [StoryGraph](http://storygraph.cs.odu.edu/):
 1. [Text processing pipeline](#text-processing-pipeline) (Command line & Python function): Dereference URI -> Boilerplate removal -> [Named Entity Extraction](https://spacy.io/usage/linguistic-features#named-entities) 
-2. [Run StoryGraph's news clustering algorithm](generate-news-similarity-graph) (Command line & Python function)
-3. [Utility to parse RSS feeds (based on feedparser)](rss-Parser)
+2. [Run StoryGraph's news clustering algorithm](#generate-news-similarity-graph) (Command line & Python function)
+3. [Utility to parse RSS feeds (based on feedparser)](#rss-parser)
 
 ### Installation
 Use the following command to install this Python-based suite,
