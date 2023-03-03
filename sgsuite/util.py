@@ -18,7 +18,7 @@ from urllib.parse import urlparse
 from boilerpy3 import extractors
 from bs4 import BeautifulSoup
 from NwalaTextUtils.textutils import parallelTask
-from NwalaTextUtils.textutils import parallelGetTxtFrmURIs
+#from NwalaTextUtils.textutils import parallelGetTxtFrmURIs
 from tldextract import extract as extract_tld
 
 logger = logging.getLogger('sgsuite.sgsuite')
@@ -1012,11 +1012,15 @@ def get_spacy_entities(spacy_ents, top_k_terms=[], base_ref_date=datetime.now(),
         #normalize date - start
         if( e.label_ == 'DATE' ):
             
-            parsed_date = parseDateStr( ent_str, settings={'RELATIVE_BASE': base_ref_date} )
-            if( parsed_date is None ):
+            try:
+                parsed_date = parseDateStr( ent_str, settings={'RELATIVE_BASE': base_ref_date} )
+                if( parsed_date is None ):
+                    continue
+                parsed_date = parsed_date.strftime('%Y-%m-%dT%H:%M:%S')
+                ent_str = parsed_date
+            except:
+                genericErrorInfo(f'\n\tProblematic date during normalization: {ent_str}')
                 continue
-
-            ent_str = parsed_date.strftime('%Y-%m-%dT%H:%M:%S')
         #normalize date - end
 
         ent_key = ent_str.lower() + e.label_
@@ -1051,17 +1055,20 @@ def parallel_ner(link, add_top_k_terms=10, min_doc_word_count=100, include_title
     nlp = spacy.load('en_core_web_sm')
     spacy_doc = nlp( link.get('title', '').strip() + '.\n' + link['text'] ) if include_title_for_ner is True else nlp( link['text'] )
     doc_len = len(spacy_doc)
+    ner_payload = {'entities': []}
 
     if( min_doc_word_count < 100 ):
-        return {'entities': []}
+        return ner_payload
 
     top_k_terms = get_top_k_terms( [t.text for t in spacy_doc], add_top_k_terms )
     if( 'title' in link ):
         top_k_terms += getTokenLabelsForText( link['title'], 'TITLE' )
 
-    return { 
+    ner_payload = { 
         'entities': get_spacy_entities(spacy_doc.ents, top_k_terms=top_k_terms, base_ref_date=datetime.now(), labels_lst=list(nlp.get_pipe('ner').labels), output_2d_lst=False)
     }
+
+    return ner_payload
 
 def parse_inpt_for_links(usr_input):
 
@@ -1107,7 +1114,7 @@ def get_entities_frm_links(links, update_rate=10, **kwargs):
     
     jobs_lst = []
     links = parallelGetTxtFrmURIs(links, updateRate=update_rate, **kwargs)
-
+    
     for i in range(len(links)):
         
         keywords = {
