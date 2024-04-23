@@ -33,7 +33,8 @@ setup(
         'tldextract>=2.2',
         'networkx>=2.4',
         'NwalaTextUtils==0.0.4',
-        'spacy>=3.1.0'
+        'spacy>=3.1.0',
+	'urllib3<2.0'
     ],
     scripts=[
         'bin/sgs'
